@@ -27,10 +27,26 @@ import os
 
 
 from geojson import Point, Feature, FeatureCollection, dump
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, ParseMode
 from telegram.ext import (
-	Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, CallbackContext
+	Updater, 
+	CommandHandler, 
+	MessageHandler, 
+	Filters, 
+	ConversationHandler, 
+	CallbackContext,
+	CallbackQueryHandler,
 )
+from ambulan_data import Ambulan
+
+# TODO
+# 1. Pendataan lokasi ambulanmu dengan form
+# 2. Info lokasi ambulanmu terdekat 
+# 3. tracking ambulan dan completion task ambulan tersebut
+# 4. dashboard peta lokasi ambulan dan tracking perjalanan ambulanmu
+# 5. pendaftaran lokasi relawan escorting ambulanmu
+# 6. kirim lokasi ambulanmu yg sedang bertugas kepada relawan terdekat
+
 
 TOKEN = '180122124:AAFeshEOGZiBPbCHun443cAFI7s4x3Fh9Xw'
 
@@ -41,12 +57,105 @@ logger = logging.getLogger(__name__)
 
 features = []
 
+#set data ambulan
+abm = Ambulan()
+abmlist = abm.listByKota()
+
+
+DEST,LOC,AMBULANMU,SHELTERMU,LAYANAN,TRACKING = range(6)
+
+#callback data
+AMBULANMU,SHELTERMU,START_OVER,INFO,ANTAR_PASIEN,BACK = range(6)
+
+
+
+#menu ambulanmu
+
+
+#menu sheltermu
+
 def start(update, context):
 	"""send message when the command /start is issued."""
-	update.message.reply_text('''Met dateng, ni adalah bot utk tracking ambulanmu. \n /tracking : mulai tracking ambuulanmu''')
+	text =(
+		'Met dateng, ni adalah bot utk info ambulanmu dan shelter. \n'
+		'Pilih Info yang ingin dicari'
+		)
+	#menu utama
+	menu_keyboard = [
+		[
+			InlineKeyboardButton("🚑 AmbulanMu", callback_data=str(AMBULANMU)),
+			InlineKeyboardButton("🏥 ShelterMu",callback_data=str(SHELTERMU)),
+		]
+	]
 
-DEST,LOC = range(2)
+	menu_markup = InlineKeyboardMarkup(menu_keyboard)
+	
+	if context.user_data.get(START_OVER):
+		update.callback_query.answer()
+		update.callback_query.edit_message_text(text, reply_markup = menu_markup)
+	else:
+		update.message.reply_text(text,reply_markup=menu_markup)
+	
+	context.user_data[START_OVER]=False
+	return LAYANAN
+	
+#shelter
+def sheltermu(update: Update, context: CallbackContext):
+	text = ("Akses untuk Info Shelter Isoman\n"
+			"Maaf data shelter belum ada"
+			)
+	keyboard= [[InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK))]]
+	markup = InlineKeyboardMarkup(keyboard)
+	update.callback_query.answer()
+	update.callback_query.edit_message_text(text, parse_mode=ParseMode.MARKDOWN,reply_markup = markup)
+	context.user_data[START_OVER] = True
+	return INFO
+	
+	
+#ambulanmu
+def ambulanmu(update:Update, context: CallbackContext):
+	text = ("Akses untuk info ambulan dan antar pasien")
+	keyboard = [
+		[
+			InlineKeyboardButton("ℹ️ Info AmbulanMu", callback_data=str(INFO)),
+			InlineKeyboardButton("Antar Pasien", callback_data=str(ANTAR_PASIEN))
+		],
+		[
+			InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK)),
+		],
+	]
+	
+	markup = InlineKeyboardMarkup(keyboard)
+	update.callback_query.answer()
+	update.callback_query.edit_message_text(text, reply_markup = markup)
+	context.user_data[START_OVER] = True
+	return INFO
+	
+#info
+def info_ambulanmu(update:Update, context:CallbackContext):
+	keyboard= [[InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK))]]
+	markup = InlineKeyboardMarkup(keyboard)
+	text = "*Info dan list ambulanmu*: \n{}".format(getAmbulanMu(abmlist))
+	update.callback_query.answer()
+	update.callback_query.edit_message_text(text, parse_mode=ParseMode.MARKDOWN,reply_markup = markup)
+	context.user_data[START_OVER] = True
+	return INFO
 
+def getAmbulanMu(data):
+	mydata = []
+	for index,row in data.iterrows():
+		mydata.append({"No":index+1, "Kota":row['Kota'],"Nama":row["Nama"],"Kontak":"+62"+str(row["Kontak"])})
+	
+	#print(mydata)
+	dd = []
+	for d in mydata:
+		dt = ', '.join(map(str,d.values()))
+		dd.append(dt)
+			
+	return "\n".join(map(str,dd))
+	
+	
+#tracking ambulanmu
 def tracking(update: Update, context: CallbackContext):
 	user = update.message.from_user
 	print(update.update_id)
@@ -82,24 +191,26 @@ def location(update: Update, context: CallbackContext):
 	#print(getupdate.edit_message.location)
 	return ConversationHandler.END
 	
-def cancel(update: Update, context: CallbackContext):
+def cancel(update: Update, context: CallbackContext) -> int:
 	user = update.message.from_user
 	logger.info("Ambulan ID %s ga jadi ngantar.", user.first_name, update.message.text)
 	update.message.reply_text('Tracking ambulan telah dibatalkan')
+	#context.user_data[START_OVER] = True
 	return ConversationHandler.END
 
 def getUpdateLoc(update: Update,context:CallbackContext):
-	print(update.edited_message)
+	print(update)
 	global features
 	updateId = update.update_id
 	currData = update.edited_message
-	tgl = currData.edit_date
-	lon = currData.location.longitude
-	lat = currData.location.latitude
-	nm = currData.from_user
-	toGeoJson(updateId,nm.first_name, lon,lat,'latest',tgl)
-	writeGeoJson(features)
-	
+	if currData :
+		tgl = currData.edit_date
+		lon = currData.location.longitude
+		lat = currData.location.latitude
+		nm = currData.from_user
+		toGeoJson(updateId,nm.first_name, lon,lat,'latest',tgl)
+		writeGeoJson(features)
+		
 	
 def toGeoJson(uid,nm,lon,lat,state,waktu):
 	point = Point((lon,lat))
@@ -111,13 +222,7 @@ def writeGeoJson(features):
 	with open("ambulan.geojson","w") as f:
 		dump(feature_collection,f)
 
-# TODO
-# 1. Pendataan lokasi ambulanmu dengan form
-# 2. Info lokasi ambulanmu terdekat 
-# 3. tracking ambulan dan completion task ambulan tersebut
-# 4. dashboard peta lokasi ambulan dan tracking perjalanan ambulanmu
-# 5. pendaftaran lokasi relawan escorting ambulanmu
-# 6. kirim lokasi ambulanmu yg sedang bertugas kepada relawan terdekat	
+	
 
 def main():
 	updater = Updater("{}".format(TOKEN), use_context=True)
@@ -125,15 +230,37 @@ def main():
 	
 	dispatcher.add_handler(CommandHandler("start",start))
 	
-	loc_handler = ConversationHandler(
+	#tracking ambulance handler
+	tracking_handler = ConversationHandler(
 		entry_points = [CommandHandler('tracking', tracking)],
 		states = {
 			DEST: [MessageHandler(Filters.text & ~Filters.command, tujuan)],
-			LOC : [MessageHandler(Filters.location,location)]
+			LOC : [MessageHandler(Filters.location,location)],
 		},
-		fallbacks = [CommandHandler('cancel',cancel)]
+		fallbacks = [CommandHandler('cancel',cancel)],
 	)
-	dispatcher.add_handler(loc_handler)
+	
+	layanan_handler = ConversationHandler(
+		entry_points =[
+						CallbackQueryHandler(ambulanmu,pattern='^' +str(AMBULANMU) +'$'),
+						CallbackQueryHandler(sheltermu,pattern='^' +str(SHELTERMU) + '$'),
+		],
+		states = {
+			TRACKING: [tracking_handler],
+			INFO: [
+				CallbackQueryHandler(info_ambulanmu,pattern='^' +str(INFO) + '$'),
+				CallbackQueryHandler(start,pattern='^' +str(BACK) + '$')
+			],
+			LAYANAN:[
+				CallbackQueryHandler(ambulanmu,pattern='^' +str(AMBULANMU) + '$'),
+				CallbackQueryHandler(sheltermu,pattern='^' +str(SHELTERMU) + '$'),
+				CallbackQueryHandler(start,pattern='^' +str(BACK) + '$')
+			]
+			},
+		fallbacks = [],
+	)
+	
+	dispatcher.add_handler(layanan_handler)
 	dispatcher.add_handler(MessageHandler(Filters.all, getUpdateLoc))
 	
 	updater.start_polling()
