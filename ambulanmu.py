@@ -157,36 +157,41 @@ def getAmbulanMu(data):
 	
 #tracking ambulanmu
 def tracking(update: Update, context: CallbackContext):
-	user = update.message.from_user
-	print(update.update_id)
+	#print(update)
+	user = update.callback_query.message.from_user
+	#print(update.update_id)
 	logger.info("Driver: %s", user.first_name)
-	update.message.reply_text(
-		"Kemana tujuan ambulanmu?"
-	)
+	text = "Kemana tujuan ambulanmu?"
+	update.callback_query.answer()
+	update.callback_query.edit_message_text(text, parse_mode=ParseMode.MARKDOWN)
+	context.user_data[START_OVER] = True
+	
 	return DEST
 
 def tujuan(update: Update, context: CallbackContext):
 	user = update.message.from_user
-	print(update.update_id)
+	#print(update)
 	tujuan = update.message.text
+	print(tujuan)
 	logger.info("Destination : %s", tujuan)
 	update.message.reply_text(
-		'Tujuan sudah dicatat. Silakan share live location (set 8 jam).',
-		reply_markup = ReplyKeyboardRemove(),
+		'Tujuan sudah dicatat. Silakan share live location (set 8 jam).'
 	)
 	return LOC
 
 def location(update: Update, context: CallbackContext):
-	print(update)
+	keyboard= [[InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK))]]
+	markup = InlineKeyboardMarkup(keyboard)
 	last_id = update.update_id
 	user = update.message.from_user
 	live_update = update.message.location
+	text = ('live location sudah di rekam. Selamat Bertugas. \n')
 	#live_update =
 	#print(live_update)
 	toGeoJson(last_id,user.first_name,live_update.longitude, live_update.latitude,'awal',update.message.date)
-	update.message.reply_text('live location sudah di rekam. Selamat Bertugas')
+	update.message.reply_text(text,reply_markup = markup)
 	
-	
+	context.user_data[START_OVER] = True
 	#getupdate = Update(last_id + 1)
 	#print(getupdate.edit_message.location)
 	return ConversationHandler.END
@@ -209,17 +214,20 @@ def getUpdateLoc(update: Update,context:CallbackContext):
 		lat = currData.location.latitude
 		nm = currData.from_user
 		toGeoJson(updateId,nm.first_name, lon,lat,'latest',tgl)
-		writeGeoJson(features)
+		#writeGeoJson(features)
 		
 	
 def toGeoJson(uid,nm,lon,lat,state,waktu):
 	point = Point((lon,lat))
 	waktu = str(waktu)
-	features.append(Feature(geometry=point,properties={"upid":uid,"driver":nm,"longitude":lon,"latitude":lat,"waktu":waktu,"state":state}))
+	myfeat = Feature(geometry=point,properties={"upid":uid,"driver":nm,"longitude":lon,"latitude":lat,"waktu":waktu,"state":state})
+	writeGeoJson(myfeat)
+	
+	#features.append(Feature(geometry=point,properties={"upid":uid,"driver":nm,"longitude":lon,"latitude":lat,"waktu":waktu,"state":state}))
 	
 def writeGeoJson(features):
 	feature_collection = FeatureCollection(features)
-	with open("ambulan.geojson","w") as f:
+	with open("ambulan.geojson","a") as f:
 		dump(feature_collection,f)
 
 	
@@ -246,9 +254,11 @@ def main():
 						CallbackQueryHandler(sheltermu,pattern='^' +str(SHELTERMU) + '$'),
 		],
 		states = {
-			TRACKING: [tracking_handler],
+			DEST: [MessageHandler(Filters.text & ~Filters.command, tujuan)],
+			LOC : [MessageHandler(Filters.location,location)],
 			INFO: [
 				CallbackQueryHandler(info_ambulanmu,pattern='^' +str(INFO) + '$'),
+				CallbackQueryHandler(tracking,pattern='^' +str(ANTAR_PASIEN) + '$'),
 				CallbackQueryHandler(start,pattern='^' +str(BACK) + '$')
 			],
 			LAYANAN:[
