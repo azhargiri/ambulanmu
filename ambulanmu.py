@@ -38,6 +38,8 @@ from telegram.ext import (
 	CallbackQueryHandler,
 )
 from ambulan_data import Ambulan
+from dotenv import load_dotenv,find_dotenv
+from os import getenv
 
 # TODO
 # 1. Pendataan lokasi ambulanmu dengan form
@@ -48,14 +50,16 @@ from ambulan_data import Ambulan
 # 6. kirim lokasi ambulanmu yg sedang bertugas kepada relawan terdekat
 
 
-TOKEN = '180122124:AAFeshEOGZiBPbCHun443cAFI7s4x3Fh9Xw'
-
 #enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s -%(levelname)s - %(message)s',
 					level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 features = []
+
+#load token
+load_dotenv(find_dotenv())
+TOKEN = getenv("TOKEN")
 
 #set data ambulan
 abm = Ambulan()
