@@ -193,12 +193,13 @@ def location(update: Update, context: CallbackContext):
 	#live_update =
 	#print(live_update)
 	toGeoJson(last_id,user.first_name,live_update.longitude, live_update.latitude,'awal',update.message.date)
+	writeGeoJson(features)
 	update.message.reply_text(text,reply_markup = markup)
 	
 	context.user_data[START_OVER] = True
 	#getupdate = Update(last_id + 1)
 	#print(getupdate.edit_message.location)
-	return ConversationHandler.END
+	return LAYANAN
 	
 def cancel(update: Update, context: CallbackContext) -> int:
 	user = update.message.from_user
@@ -218,20 +219,21 @@ def getUpdateLoc(update: Update,context:CallbackContext):
 		lat = currData.location.latitude
 		nm = currData.from_user
 		toGeoJson(updateId,nm.first_name, lon,lat,'latest',tgl)
-		#writeGeoJson(features)
+		writeGeoJson(features)
 		
 	
 def toGeoJson(uid,nm,lon,lat,state,waktu):
+	global features
 	point = Point((lon,lat))
 	waktu = str(waktu)
-	myfeat = Feature(geometry=point,properties={"upid":uid,"driver":nm,"longitude":lon,"latitude":lat,"waktu":waktu,"state":state})
-	writeGeoJson(myfeat)
-	
+	#myfeat = Feature(geometry=point,properties={"upid":uid,"driver":nm,"longitude":lon,"latitude":lat,"waktu":waktu,"state":state})
 	#features.append(Feature(geometry=point,properties={"upid":uid,"driver":nm,"longitude":lon,"latitude":lat,"waktu":waktu,"state":state}))
+	features.insert(0,Feature(geometry=point,properties={"upid":uid,"driver":nm,"longitude":lon,"latitude":lat,"waktu":waktu,"state":state}))
+	#writeGeoJson(features)
 	
 def writeGeoJson(features):
 	feature_collection = FeatureCollection(features)
-	with open("ambulan.geojson","a") as f:
+	with open("ambulan.geojson","w") as f:
 		dump(feature_collection,f)
 
 	
