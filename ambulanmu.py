@@ -24,7 +24,7 @@
 
 import logging
 import os
-
+from typing import Union, List
 
 from geojson import Point, Feature, FeatureCollection, dump
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, ParseMode
@@ -63,20 +63,24 @@ TOKEN = getenv("TOKEN")
 
 #set data ambulan
 abm = Ambulan()
-abmlist = abm.listByKota()
+#abmlist = abm.listByKota()
 
 
 DEST,LOC,AMBULANMU,SHELTERMU,LAYANAN,TRACKING = range(6)
 
 #callback data
-AMBULANMU,SHELTERMU,START_OVER,INFO,ANTAR_PASIEN,BACK = range(6)
+AMBULANMU,SHELTERMU,START_OVER,INFO,ANTAR_PASIEN,BACK,PILIHKOTA= range(7)
 
+#build menu button
+#https://github.com/python-telegram-bot/python-telegram-bot/wiki/Code-snippets#build-a-menu-with-buttons
 
-
-#menu ambulanmu
-
-
-#menu sheltermu
+def build_menu(
+	buttons,
+	n_cols 
+	):
+	menu = [buttons[i:i + n_cols] for i in range(0,len(buttons),n_cols)]
+	
+	return menu
 
 def start(update, context):
 	"""send message when the command /start is issued."""
@@ -136,15 +140,62 @@ def ambulanmu(update:Update, context: CallbackContext):
 	return INFO
 	
 #info
+#list kota yg sudah ada layanan ambulanmu
 def info_ambulanmu(update:Update, context:CallbackContext):
+	kota = abm.listKota()
+	#print(kota)
+	button_list = [[InlineKeyboardButton(text = s,callback_data=str(s))] for s in kota]
+	#button_list = [[[InlineKeyboardButton(text = s,callback_data=str(s))] for s in kota[i:i +2]] for i in range(0,len(kota),2) ]
+	
 	keyboard= [[InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK))]]
-	markup = InlineKeyboardMarkup(keyboard)
-	text = "*Info dan list ambulanmu*: \n{}".format(getAmbulanMu(abmlist))
+	
+	button_list = button_list + keyboard
+	#menu = [[element] for element in button_list]
+		
+	mybutton = [button_list[i:i + 2] for i in range(0,len(button_list),2)]
+	
+	#mymenu = [mybutton[0],mybutton[1],mybutton[2],mybutton[3]]
+	'''
+	print(len(mybutton))
+	for i in range(len(mybutton)):
+		mymenu = mymenu + mybutton[i]
+	'''
+	markup = InlineKeyboardMarkup(button_list)
+	#markup = InlineKeyboardMarkup(build_menu(button_list,2))
+	#markup = InlineKeyboardMarkup(mymenu)
+	#text = "*Info dan list ambulanmu*: \n{}".format(getAmbulanMu(abmlist))
+	text = ("Berikut Kota yang sudah menyediakan layanan AmbulanMu")
 	update.callback_query.answer()
-	update.callback_query.edit_message_text(text, parse_mode=ParseMode.MARKDOWN,reply_markup = markup)
+	update.callback_query.edit_message_text(text,reply_markup = markup)
 	context.user_data[START_OVER] = True
 	return INFO
 
+def aturMenu(buttons,col):
+	menu = []
+	submenu =[]
+	mybutton = [buttons[i:i + col] for i in range(0,len(buttons),col)]
+	
+	for i in range(len(mybutton)):
+		for j in i:
+			submenu[i].append(mybutton[i][j])
+	return submenu
+	
+
+#detail list ambulan tiap kota
+def detailInfo(update: Update, context: CallbackContext):
+	#print(update)
+	kota = update.callback_query.data
+	text = "*Info dan list ambulanmu*: \n{}".format(getAmbulanMu(abm.listByKota(kota=kota)))
+	keyboard= [[InlineKeyboardButton("Kota Lain",callback_data=str(PILIHKOTA)),
+				InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK))]
+				]
+	markup = InlineKeyboardMarkup(keyboard)
+	update.callback_query.answer()
+	update.callback_query.edit_message_text(text,parse_mode=ParseMode.MARKDOWN,reply_markup = markup)
+	context.user_data[START_OVER] = True
+	
+	return INFO
+	
 def getAmbulanMu(data):
 	mydata = []
 	for index,row in data.iterrows():
@@ -176,7 +227,7 @@ def tujuan(update: Update, context: CallbackContext):
 	user = update.message.from_user
 	#print(update)
 	tujuan = update.message.text
-	print(tujuan)
+	#print(tujuan)
 	logger.info("Destination : %s", tujuan)
 	update.message.reply_text(
 		'Tujuan sudah dicatat. Silakan share live location (set 8 jam).'
@@ -209,7 +260,7 @@ def cancel(update: Update, context: CallbackContext) -> int:
 	return ConversationHandler.END
 
 def getUpdateLoc(update: Update,context:CallbackContext):
-	print(update)
+	#print(update)
 	global features
 	updateId = update.update_id
 	currData = update.edited_message
@@ -265,7 +316,9 @@ def main():
 			INFO: [
 				CallbackQueryHandler(info_ambulanmu,pattern='^' +str(INFO) + '$'),
 				CallbackQueryHandler(tracking,pattern='^' +str(ANTAR_PASIEN) + '$'),
-				CallbackQueryHandler(start,pattern='^' +str(BACK) + '$')
+				CallbackQueryHandler(start,pattern='^' +str(BACK) + '$'),
+				CallbackQueryHandler(info_ambulanmu,pattern='^' +str(PILIHKOTA) + '$'),
+				CallbackQueryHandler(detailInfo)
 			],
 			LAYANAN:[
 				CallbackQueryHandler(ambulanmu,pattern='^' +str(AMBULANMU) + '$'),

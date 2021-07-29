@@ -28,16 +28,32 @@ class Ambulan:
 		self.ambulan = pd.read_csv("ambulanmu.csv")
 
 	def listByKota(self,kota=None):
-		data = self.ambulan
+		data = self.checkUpdateData()
 		if (kota):
 			nmKota = kota
 			ambulanList = data.loc[data["Kota"] == kota]
 		else:
 			ambulanList = data
 		return ambulanList
-	
+		
+	def listKota(self):
+		data = self.checkUpdateData()
+		kotalist = data["Kota"].unique().tolist()
+		return kotalist
+		
+	def checkUpdateData(self):
+		oldData = self.ambulan 
+		newData = pd.read_csv("ambulanmu.csv")
+		
+		if( len(newData) > len(oldData)):
+			data = newData
+		else: 
+			data = oldData
+		return data
+
+
 '''	
 ambulan = Ambulan()
-data = ambulan.listByKota(kota="Bantul")
+data = ambulan.listByKota(kota="Sidoarjo")
 print(data)
 '''

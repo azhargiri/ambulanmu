@@ -30,7 +30,8 @@
         </div>
         <script>
             // set up map
-            var center = [-0.789275, 113.921327];
+            var center = [-1.328499, 121.589203];
+            var url = "ambulan.geojson"
             
             function createRealtimeLayer(url) {
 				return L.realtime(url, {
@@ -52,8 +53,12 @@
 			}
 			
 			var map = L.map('map').setView(center, 6);
-			var ambulan = createRealtimeLayer('http://localhost:8000/ambulan.geojson');
+			var ambulan = createRealtimeLayer(url);
 			ambulan.addTo(map)
+			ambulan.once('update', function() {
+                                map.fitBounds(ambulan.getBounds(), {maxZoom:8});
+                        });
+
             // Stamen's Toner basemap
             L.tileLayer(
                 'https://stamen-tiles-{s}.a.ssl.fastly.net/toner/{z}/{x}/{y}.png', {
