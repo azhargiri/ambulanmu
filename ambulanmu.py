@@ -143,27 +143,11 @@ def ambulanmu(update:Update, context: CallbackContext):
 #list kota yg sudah ada layanan ambulanmu
 def info_ambulanmu(update:Update, context:CallbackContext):
 	kota = abm.listKota()
-	#print(kota)
 	button_list = [[InlineKeyboardButton(text = s,callback_data=str(s))] for s in kota]
-	#button_list = [[[InlineKeyboardButton(text = s,callback_data=str(s))] for s in kota[i:i +2]] for i in range(0,len(kota),2) ]
-	
 	keyboard= [[InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK))]]
-	
 	button_list = button_list + keyboard
-	#menu = [[element] for element in button_list]
-		
-	mybutton = [button_list[i:i + 2] for i in range(0,len(button_list),2)]
-	
-	#mymenu = [mybutton[0],mybutton[1],mybutton[2],mybutton[3]]
-	'''
-	print(len(mybutton))
-	for i in range(len(mybutton)):
-		mymenu = mymenu + mybutton[i]
-	'''
-	markup = InlineKeyboardMarkup(button_list)
-	#markup = InlineKeyboardMarkup(build_menu(button_list,2))
-	#markup = InlineKeyboardMarkup(mymenu)
-	#text = "*Info dan list ambulanmu*: \n{}".format(getAmbulanMu(abmlist))
+	menu = aturMenu(button_list,2)
+	markup = InlineKeyboardMarkup(menu)
 	text = ("Berikut Kota yang sudah menyediakan layanan AmbulanMu")
 	update.callback_query.answer()
 	update.callback_query.edit_message_text(text,reply_markup = markup)
@@ -173,11 +157,14 @@ def info_ambulanmu(update:Update, context:CallbackContext):
 def aturMenu(buttons,col):
 	menu = []
 	submenu =[]
-	mybutton = [buttons[i:i + col] for i in range(0,len(buttons),col)]
+	b = [buttons[i:i + col] for i in range(0,len(buttons),col)]
 	
-	for i in range(len(mybutton)):
-		for j in i:
-			submenu[i].append(mybutton[i][j])
+	for i in range(len(b)):
+		if len(b[i]) > 1:
+			submenu.append(b[i][0]+b[i][1])
+		else:
+			submenu.extend(b[i])
+	
 	return submenu
 	
 
@@ -185,7 +172,7 @@ def aturMenu(buttons,col):
 def detailInfo(update: Update, context: CallbackContext):
 	#print(update)
 	kota = update.callback_query.data
-	text = "*Info dan list ambulanmu*: \n{}".format(getAmbulanMu(abm.listByKota(kota=kota)))
+	text = "*Info dan list ambulanmu* di {}: \n{}".format(kota,getAmbulanMu(abm.listByKota(kota=kota)))
 	keyboard= [[InlineKeyboardButton("Kota Lain",callback_data=str(PILIHKOTA)),
 				InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK))]
 				]
@@ -199,7 +186,7 @@ def detailInfo(update: Update, context: CallbackContext):
 def getAmbulanMu(data):
 	mydata = []
 	for index,row in data.iterrows():
-		mydata.append({"No":index+1, "Kota":row['Kota'],"Nama":row["Nama"],"Kontak":"+62"+str(row["Kontak"])})
+		mydata.append({"Nama":row["Nama"],"Kontak":"+62"+str(row["Kontak"])})
 	
 	#print(mydata)
 	dd = []
