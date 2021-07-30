@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-#  ambulan_data.py
+#  shelter.py
 #  
 #  Copyright 2021 acep <acep@ryzen-desk>
 #  
@@ -21,29 +21,32 @@
 #  MA 02110-1301, USA.
 #  
 #  
+
+
 import pandas as pd
 
-class Ambulan:
+class Shelter:
 	def __init__(self):
-		self.ambulan = pd.read_csv("ambulanmu.csv")
+		self.shelter = pd.read_csv("sheltermu.csv")
 
 	def listByKota(self,kota=None):
 		data = self.checkUpdateData()
 		if (kota):
 			nmKota = kota
-			ambulanList = data.loc[data["Kota"] == kota]
+			shelterList = data.loc[data["kota"] == kota]
+			shelterList = shelterList.values.tolist()
 		else:
-			ambulanList = data
-		return ambulanList
+			shelterList = data.values.tolist()
+		return shelterList
 		
 	def listKota(self):
 		data = self.checkUpdateData()
-		kotalist = data["Kota"].unique().tolist()
+		kotalist = data["kota"].unique().tolist()
 		return kotalist
 		
 	def checkUpdateData(self):
-		oldData = self.ambulan 
-		newData = pd.read_csv("ambulanmu.csv")
+		oldData = self.shelter 
+		newData = pd.read_csv("sheltermu.csv")
 		
 		if( len(newData) > len(oldData)):
 			data = newData
@@ -51,9 +54,8 @@ class Ambulan:
 			data = oldData
 		return data
 
+'''
+shelter = Shelter()
+print(shelter.listByKota())
+'''
 
-'''
-ambulan = Ambulan()
-data = ambulan.listByKota()
-print(data)
-'''

@@ -24,7 +24,6 @@
 
 import logging
 import os
-from typing import Union, List
 
 from geojson import Point, Feature, FeatureCollection, dump
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, ParseMode
@@ -38,6 +37,7 @@ from telegram.ext import (
 	CallbackQueryHandler,
 )
 from ambulan_data import Ambulan
+from shelter import Shelter
 from dotenv import load_dotenv,find_dotenv
 from os import getenv
 
@@ -63,6 +63,7 @@ TOKEN = getenv("TOKEN")
 
 #set data ambulan
 abm = Ambulan()
+shelter = Shelter()
 #abmlist = abm.listByKota()
 
 
@@ -71,16 +72,6 @@ DEST,LOC,AMBULANMU,SHELTERMU,LAYANAN,TRACKING = range(6)
 #callback data
 AMBULANMU,SHELTERMU,START_OVER,INFO,ANTAR_PASIEN,BACK,PILIHKOTA= range(7)
 
-#build menu button
-#https://github.com/python-telegram-bot/python-telegram-bot/wiki/Code-snippets#build-a-menu-with-buttons
-
-def build_menu(
-	buttons,
-	n_cols 
-	):
-	menu = [buttons[i:i + n_cols] for i in range(0,len(buttons),n_cols)]
-	
-	return menu
 
 def start(update, context):
 	"""send message when the command /start is issued."""
@@ -109,8 +100,7 @@ def start(update, context):
 	
 #shelter
 def sheltermu(update: Update, context: CallbackContext):
-	text = ("Akses untuk Info Shelter Isoman\n"
-			"Maaf data shelter belum ada"
+	text = ("*Info Shelter Isoman :*\n{}".format(getShelterMu(shelter.listByKota()))
 			)
 	keyboard= [[InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK))]]
 	markup = InlineKeyboardMarkup(keyboard)
@@ -192,6 +182,18 @@ def getAmbulanMu(data):
 	dd = []
 	for d in mydata:
 		dt = ', '.join(map(str,d.values()))
+		dd.append(dt)
+			
+	return "\n".join(map(str,dd))
+
+# get shelter
+def getShelterMu(data):
+	dd = []
+	for d in data:
+		d[0] ="*{}*".format(d[0])
+		d[1] = "+62{}".format(d[1])
+			
+		dt = ', '.join(map(str,d))
 		dd.append(dt)
 			
 	return "\n".join(map(str,dd))
