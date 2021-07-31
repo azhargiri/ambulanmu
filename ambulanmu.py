@@ -40,6 +40,8 @@ from ambulan_data import Ambulan
 from shelter import Shelter
 from dotenv import load_dotenv,find_dotenv
 from os import getenv
+import json
+import datetime
 
 # TODO
 # 1. Pendataan lokasi ambulanmu dengan form
@@ -231,6 +233,7 @@ def tujuan(update: Update, context: CallbackContext):
 	user = update.message.from_user
 	print(context.user_data)
 	print("catat tujuan :",update)
+	global tujuan
 	tujuan = update.message.text
 	
 	#print(tujuan)
@@ -244,11 +247,19 @@ def location(update: Update, context: CallbackContext):
 	keyboard= [[InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK))]]
 	markup = InlineKeyboardMarkup(keyboard)
 	last_id = update.update_id
-	user = update.message.from_user
+	user = update.message.chat
+	driver ={}
+	driver['id'] = user.id
+	driver['username'] = user.username
+	driver['firstname']=user.first_name
+	
 	live_update = update.message.location
 	text = ('live location sudah di rekam. Selamat Bertugas. \n')
 	#live_update =
 	print("catat lokasi :",update)
+	lokasi = "({},{})".format(live_update.longitude, live_update.latitude)
+	#simpan data {user, lokasi=(lon,lat), tujuan,waktu}
+	trackingLog(driver,tujuan,lokasi,update.message.date)
 	toGeoJson(last_id,user.first_name,live_update.longitude, live_update.latitude,'awal',update.message.date)
 	writeGeoJson(features)
 	update.message.reply_text(text,reply_markup = markup)
@@ -258,10 +269,36 @@ def location(update: Update, context: CallbackContext):
 	#print(getupdate.edit_message.location)
 	return LAYANAN
 	
+def myconverter(o):
+	if isinstance(o,datetime.datetime):
+		return o.__str__()
+
+def trackingLog(user,tujuan,lokasi,waktu):
+	tdata = {}
+	tdata['user'] = user
+	tdata['lokasi']=lokasi
+	tdata['tujuan']= tujuan
+	tdata['waktu']=str(waktu)
+	#tdata ="'user':{},'lokasi':{},'tujuan':{},'waktu':{}".format(user,tujuan,lokasi,waktu)
+	toDir = "data"
+	file_name = "antarpasien.json"
+	toData = os.path.join(toDir,file_name)
+	with open(toData,"a+") as fs:
+		fs.seek(0)
+		if len(fs.read()) == 0:
+			fs.write(json.dumps(tdata))
+		else:
+			fs.write(f',{json.dumps(tdata)}')
+	
+		
 def cancel(update: Update, context: CallbackContext) -> int:
 	user = update.message.from_user
+	text = (
+				"Tracking ambulan telah dibatalkan.\n\n"
+				"/start untuk memulai kembali bot"
+			)
 	logger.info("Ambulan ID %s ga jadi ngantar.", user.first_name)
-	update.message.reply_text('Tracking ambulan telah dibatalkan')
+	update.message.reply_text(text)
 	context.user_data[START_OVER] = False
 	return ConversationHandler.END
 
