@@ -70,13 +70,14 @@ shelter = Shelter()
 DEST,LOC,AMBULANMU,SHELTERMU,LAYANAN,TRACKING = range(6)
 
 #callback data
-AMBULANMU,SHELTERMU,START_OVER,INFO,ANTAR_PASIEN,BACK,PILIHKOTA= range(7)
+AMBULANMU,SHELTERMU,START_OVER,INFO,ANTAR_PASIEN,BACK,PILIHKOTA,TRACK= range(8)
 
 
 def start(update, context):
 	"""send message when the command /start is issued."""
 	text =(
-		'Met dateng, ni adalah bot utk info ambulanmu dan shelter. \n'
+		'Selamat Datang {}, ini adalah bot untuk mencari informasi AmbulanMu dan shelter. \n'
+		'Informasi yang disediakan saat ini adalah kontak untuk layanan-layanan tersebut \n'
 		'Pilih Info yang ingin dicari'
 		)
 	#menu utama
@@ -90,13 +91,27 @@ def start(update, context):
 	menu_markup = InlineKeyboardMarkup(menu_keyboard)
 	
 	if context.user_data.get(START_OVER):
+		user = update.callback_query.message.chat
+		nama = checkNama(user)
 		update.callback_query.answer()
-		update.callback_query.edit_message_text(text, reply_markup = menu_markup)
+		update.callback_query.edit_message_text(text.format(nama), parse_mode=ParseMode.MARKDOWN,reply_markup = menu_markup)
 	else:
-		update.message.reply_text(text,reply_markup=menu_markup)
+		if (update.message.from_user):
+			user = update.message.from_user
+		else:
+			user = update.callback_query.message.chat
+		nama = checkNama(user)
+		update.message.reply_text(text.format(nama),parse_mode=ParseMode.MARKDOWN,reply_markup=menu_markup)
 	
 	context.user_data[START_OVER]=False
 	return LAYANAN
+	
+def checkNama(user):
+	if(user.last_name):
+		nama = "*{} {}*".format(user.first_name,user.last_name)
+	else:
+		nama = "*{}*".format(user.first_name)
+	return nama
 	
 #shelter
 def sheltermu(update: Update, context: CallbackContext):
@@ -214,8 +229,10 @@ def tracking(update: Update, context: CallbackContext):
 
 def tujuan(update: Update, context: CallbackContext):
 	user = update.message.from_user
-	#print(update)
+	print(context.user_data)
+	print("catat tujuan :",update)
 	tujuan = update.message.text
+	
 	#print(tujuan)
 	logger.info("Destination : %s", tujuan)
 	update.message.reply_text(
@@ -231,7 +248,7 @@ def location(update: Update, context: CallbackContext):
 	live_update = update.message.location
 	text = ('live location sudah di rekam. Selamat Bertugas. \n')
 	#live_update =
-	#print(live_update)
+	print("catat lokasi :",update)
 	toGeoJson(last_id,user.first_name,live_update.longitude, live_update.latitude,'awal',update.message.date)
 	writeGeoJson(features)
 	update.message.reply_text(text,reply_markup = markup)
@@ -243,9 +260,9 @@ def location(update: Update, context: CallbackContext):
 	
 def cancel(update: Update, context: CallbackContext) -> int:
 	user = update.message.from_user
-	logger.info("Ambulan ID %s ga jadi ngantar.", user.first_name, update.message.text)
+	logger.info("Ambulan ID %s ga jadi ngantar.", user.first_name)
 	update.message.reply_text('Tracking ambulan telah dibatalkan')
-	#context.user_data[START_OVER] = True
+	context.user_data[START_OVER] = False
 	return ConversationHandler.END
 
 def getUpdateLoc(update: Update,context:CallbackContext):
@@ -300,8 +317,13 @@ def main():
 						CallbackQueryHandler(sheltermu,pattern='^' +str(SHELTERMU) + '$'),
 		],
 		states = {
-			DEST: [MessageHandler(Filters.text & ~Filters.command, tujuan)],
-			LOC : [MessageHandler(Filters.location,location)],
+			DEST: [MessageHandler(Filters.text & ~Filters.command, tujuan),
+				CommandHandler('cancel',cancel)
+			],
+			LOC : [
+				MessageHandler(Filters.location,location),
+				CommandHandler('cancel',cancel)
+			],
 			INFO: [
 				CallbackQueryHandler(info_ambulanmu,pattern='^' +str(INFO) + '$'),
 				CallbackQueryHandler(tracking,pattern='^' +str(ANTAR_PASIEN) + '$'),
