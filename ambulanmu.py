@@ -153,7 +153,7 @@ def info_ambulanmu(update:Update, context:CallbackContext):
 	button_list = [[InlineKeyboardButton(text = s,callback_data=str(s))] for s in kota]
 	keyboard= [[InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK))]]
 	button_list = button_list + keyboard
-	menu = aturMenu(button_list,2)
+	menu = aturMenu(button_list,3)
 	markup = InlineKeyboardMarkup(menu)
 	text = ("Berikut Kota yang sudah menyediakan layanan AmbulanMu")
 	update.callback_query.answer()
@@ -162,12 +162,13 @@ def info_ambulanmu(update:Update, context:CallbackContext):
 	return INFO
 
 def aturMenu(buttons,col):
-	menu = []
 	submenu =[]
 	b = [buttons[i:i + col] for i in range(0,len(buttons),col)]
 	
 	for i in range(len(b)):
-		if len(b[i]) > 1:
+		if len(b[i]) > 2:
+			submenu.append(b[i][0]+b[i][1]+b[i][2])
+		elif len(b[i]) >1:
 			submenu.append(b[i][0]+b[i][1])
 		else:
 			submenu.extend(b[i])
