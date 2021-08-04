@@ -156,7 +156,7 @@ def ambulanmuByProv(update:Update, context:CallbackContext):
 	button_list = [[InlineKeyboardButton(text = p,callback_data=str(p))] for p in prov]
 	keyboard= [[InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK))]]
 	button_list = button_list + keyboard
-	menu = aturMenu(button_list,3)
+	menu = aturMenu(button_list,2)
 	markup = InlineKeyboardMarkup(menu)
 	text = ("Berikut Provinsi yang sudah menyediakan layanan AmbulanMu")
 	update.callback_query.answer()
@@ -167,6 +167,7 @@ def ambulanmuByProv(update:Update, context:CallbackContext):
 #list kota yg sudah ada layanan ambulanmu
 def info_ambulanmu(update:Update, context:CallbackContext):
 	global selectedProv
+	global ListKota
 		
 	if(update.callback_query.data in ListProv):
 		prov = update.callback_query.data
@@ -176,14 +177,16 @@ def info_ambulanmu(update:Update, context:CallbackContext):
 		
 		
 	kota = abm.listKota(prov)
+	ListKota = kota
+	
 	button_list = [[InlineKeyboardButton(text = s,callback_data=str(s))] for s in kota]
 	keyboard= [[InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK))]]
 	button_list = button_list + keyboard
 	menu = aturMenu(button_list,3)
 	markup = InlineKeyboardMarkup(menu)
-	text = ("Berikut Kota yang sudah menyediakan layanan AmbulanMu")
+	text = ("Berikut Kota di *{}* yang sudah menyediakan layanan AmbulanMu").format(prov)
 	update.callback_query.answer()
-	update.callback_query.edit_message_text(text,reply_markup = markup)
+	update.callback_query.edit_message_text(text,parse_mode=ParseMode.MARKDOWN,reply_markup = markup)
 	context.user_data[START_OVER] = True
 	return DETAIL
 
@@ -194,7 +197,7 @@ def aturMenu(buttons,col):
 	for i in range(len(b)):
 		if len(b[i]) > 2:
 			submenu.append(b[i][0]+b[i][1]+b[i][2])
-		elif len(b[i]) >1:
+		elif len(b[i])>1:
 			submenu.append(b[i][0]+b[i][1])
 		else:
 			submenu.extend(b[i])
@@ -204,10 +207,17 @@ def aturMenu(buttons,col):
 
 #detail list ambulan tiap kota
 def detailInfo(update: Update, context: CallbackContext):
-	print(update)
-	kota = update.callback_query.data
-	print(kota)
-	text = "*Info dan list ambulanmu* di {}: \n{}".format(kota,getAmbulanMu(abm.listByKota(kota=kota)))
+	
+	global selectedKota
+	
+	if(update.callback_query.data in ListKota):
+		kota = update.callback_query.data
+		selectedKota = update.callback_query.data
+	else:
+		kota = selectedKota
+	
+	
+	text = "*Info dan list ambulanmu* di *{}*: \n{}".format(kota,getAmbulanMu(abm.listByKota(kota=kota)))
 	keyboard= [[InlineKeyboardButton("Kota Lain",callback_data=str(PILIHKOTA)),
 				InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK))]
 				]
@@ -399,7 +409,7 @@ def main():
 			DETAIL:[
 				CallbackQueryHandler(detailInfo),
 				CallbackQueryHandler(info_ambulanmu,pattern='^' +str(PILIHKOTA) + '$'),
-				CallbackQueryHandler(start,pattern='^' +str(BACK) + '$'),
+				CallbackQueryHandler(start,pattern='^' +str(BACK) + '$')
 			],
 			LAYANAN:[
 				CallbackQueryHandler(ambulanmu,pattern='^' +str(AMBULANMU) + '$'),
