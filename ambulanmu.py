@@ -70,7 +70,7 @@ shelter = Shelter()
 #abmlist = abm.listByKota()
 
 
-DEST,LOC,AMBULANMU,SHELTERMU,LAYANAN,TRACKING = range(6)
+DEST,LOC,AMBULANMU,SHELTERMU,LAYANAN,TRACKING,DETAIL = range(7)
 
 #callback data
 AMBULANMU,SHELTERMU,START_OVER,INFO,ANTAR_PASIEN,BACK,PILIHKOTA,TRACK= range(8)
@@ -148,9 +148,34 @@ def ambulanmu(update:Update, context: CallbackContext):
 	return INFO
 	
 #info
+#list provinsi 
+def ambulanmuByProv(update:Update, context:CallbackContext):
+	global ListProv
+	prov = abm.listProv()
+	ListProv = prov
+	button_list = [[InlineKeyboardButton(text = p,callback_data=str(p))] for p in prov]
+	keyboard= [[InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK))]]
+	button_list = button_list + keyboard
+	menu = aturMenu(button_list,3)
+	markup = InlineKeyboardMarkup(menu)
+	text = ("Berikut Provinsi yang sudah menyediakan layanan AmbulanMu")
+	update.callback_query.answer()
+	update.callback_query.edit_message_text(text,reply_markup = markup)
+	context.user_data[START_OVER] = True
+	return INFO
+	
 #list kota yg sudah ada layanan ambulanmu
 def info_ambulanmu(update:Update, context:CallbackContext):
-	kota = abm.listKota()
+	global selectedProv
+		
+	if(update.callback_query.data in ListProv):
+		prov = update.callback_query.data
+		selectedProv = update.callback_query.data
+	else:
+		prov= selectedProv
+		
+		
+	kota = abm.listKota(prov)
 	button_list = [[InlineKeyboardButton(text = s,callback_data=str(s))] for s in kota]
 	keyboard= [[InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK))]]
 	button_list = button_list + keyboard
@@ -160,7 +185,7 @@ def info_ambulanmu(update:Update, context:CallbackContext):
 	update.callback_query.answer()
 	update.callback_query.edit_message_text(text,reply_markup = markup)
 	context.user_data[START_OVER] = True
-	return INFO
+	return DETAIL
 
 def aturMenu(buttons,col):
 	submenu =[]
@@ -179,8 +204,9 @@ def aturMenu(buttons,col):
 
 #detail list ambulan tiap kota
 def detailInfo(update: Update, context: CallbackContext):
-	#print(update)
+	print(update)
 	kota = update.callback_query.data
+	print(kota)
 	text = "*Info dan list ambulanmu* di {}: \n{}".format(kota,getAmbulanMu(abm.listByKota(kota=kota)))
 	keyboard= [[InlineKeyboardButton("Kota Lain",callback_data=str(PILIHKOTA)),
 				InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK))]
@@ -364,11 +390,16 @@ def main():
 				CommandHandler('cancel',cancel)
 			],
 			INFO: [
-				CallbackQueryHandler(info_ambulanmu,pattern='^' +str(INFO) + '$'),
+				CallbackQueryHandler(ambulanmuByProv,pattern='^' +str(INFO) + '$'),
 				CallbackQueryHandler(tracking,pattern='^' +str(ANTAR_PASIEN) + '$'),
 				CallbackQueryHandler(start,pattern='^' +str(BACK) + '$'),
+				CallbackQueryHandler(info_ambulanmu),
+				
+			],
+			DETAIL:[
+				CallbackQueryHandler(detailInfo),
 				CallbackQueryHandler(info_ambulanmu,pattern='^' +str(PILIHKOTA) + '$'),
-				CallbackQueryHandler(detailInfo)
+				CallbackQueryHandler(start,pattern='^' +str(BACK) + '$'),
 			],
 			LAYANAN:[
 				CallbackQueryHandler(ambulanmu,pattern='^' +str(AMBULANMU) + '$'),

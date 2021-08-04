@@ -35,10 +35,19 @@ class Ambulan:
 		else:
 			ambulanList = data
 		return ambulanList
-		
-	def listKota(self):
+	
+	def listProv(self):
 		data = self.checkUpdateData()
-		kotalist = data["Kota"].unique().tolist()
+		provlist = data["Provinsi"].unique().tolist()
+		return provlist
+		
+	def listKota(self,prov=None):
+		data = self.checkUpdateData()
+		if(prov):
+			kotalist=data.loc[data["Provinsi"]==prov]
+			kotalist = kotalist["Kota"].unique().tolist()
+		else:
+			kotalist = data["Kota"].unique().tolist()
 		return kotalist
 		
 	def checkUpdateData(self):
@@ -54,6 +63,7 @@ class Ambulan:
 
 '''
 ambulan = Ambulan()
-data = ambulan.listByKota()
+data = ambulan.listKota(prov="Banten")
 print(data)
 '''
+
