@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python # -*- coding: utf-8 -*-
 #
 #  ambulan_data.py
 #  
@@ -35,11 +34,32 @@ class Ambulan:
 		else:
 			ambulanList = data
 		return ambulanList
-		
+
 	def listKota(self):
 		data = self.checkUpdateData()
 		kotalist = data["Kota"].unique().tolist()
 		return kotalist
+    
+	def listKotaByProvinsi(self, provinsi=None):
+		kota_list = []
+		data = self.checkUpdateData()
+
+		if (provinsi):
+			kota_list = data.loc[data["Provinsi"] == provinsi]["Kota"].unique().tolist()
+
+		return kota_list
+
+	def listProvinsi(self):
+		data = self.checkUpdateData();
+		provinsi_list = data["Provinsi"].unique().tolist()
+
+		return provinsi_list
+
+	def get_kota(self, kota):
+		data = self.checkUpdateData()
+		kota = data.loc[data['Kota'] == kota].at[0]
+
+		return kota
 		
 	def checkUpdateData(self):
 		oldData = self.ambulan 

@@ -54,7 +54,7 @@ import datetime
 
 #enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s -%(levelname)s - %(message)s',
-					level=logging.INFO)
+					level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 features = []
@@ -62,6 +62,7 @@ features = []
 #load token
 load_dotenv(find_dotenv())
 TOKEN = getenv("TOKEN")
+
 
 #set data ambulan
 abm = Ambulan()
@@ -72,7 +73,7 @@ shelter = Shelter()
 DEST,LOC,AMBULANMU,SHELTERMU,LAYANAN,TRACKING = range(6)
 
 #callback data
-AMBULANMU,SHELTERMU,START_OVER,INFO,ANTAR_PASIEN,BACK,PILIHKOTA,TRACK= range(8)
+AMBULANMU,SHELTERMU,START_OVER,INFO,ANTAR_PASIEN,BACK,PILIHKOTA,TRACK,INFO_PROVINSI = range(9)
 
 
 def start(update, context):
@@ -132,7 +133,7 @@ def ambulanmu(update:Update, context: CallbackContext):
 	text = ("Akses untuk info ambulan dan antar pasien")
 	keyboard = [
 		[
-			InlineKeyboardButton("ℹ️ Info AmbulanMu", callback_data=str(INFO)),
+			InlineKeyboardButton("ℹ️ Info AmbulanMu", callback_data=INFO_PROVINSI),
 			InlineKeyboardButton("Antar Pasien", callback_data=str(ANTAR_PASIEN))
 		],
 		[
@@ -144,12 +145,18 @@ def ambulanmu(update:Update, context: CallbackContext):
 	update.callback_query.answer()
 	update.callback_query.edit_message_text(text, reply_markup = markup)
 	context.user_data[START_OVER] = True
-	return INFO
+
+	return INFO_PROVINSI
 	
 #info
 #list kota yg sudah ada layanan ambulanmu
 def info_ambulanmu(update:Update, context:CallbackContext):
-	kota = abm.listKota()
+	logger.debug('invoke info_ambulanmu')
+
+	provinsi = update.callback_query.data
+	kota = abm.listKotaByProvinsi(provinsi)
+	kota.sort()
+
 	button_list = [[InlineKeyboardButton(text = s,callback_data=str(s))] for s in kota]
 	keyboard= [[InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK))]]
 	button_list = button_list + keyboard
@@ -159,7 +166,28 @@ def info_ambulanmu(update:Update, context:CallbackContext):
 	update.callback_query.answer()
 	update.callback_query.edit_message_text(text,reply_markup = markup)
 	context.user_data[START_OVER] = True
+
 	return INFO
+
+#list provinsi
+def info_ambulanmu_by_provinsi(update: Update, context: CallbackContext):
+	provinsi = abm.listProvinsi();
+	provinsi.sort();
+
+	button_list = [[InlineKeyboardButton(text = s,callback_data=str(s))] for s in provinsi]
+	keyboard= [[InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK))]]
+	button_list = button_list + keyboard
+
+	menu = aturMenu(button_list,2) 
+	markup = InlineKeyboardMarkup(menu)
+
+	text = ("Berikut Provinsi yang sudah menyediakan layanan AmbulanMu")
+	update.callback_query.answer()
+	update.callback_query.edit_message_text(text,reply_markup = markup)
+	context.user_data[START_OVER] = True
+
+	return PILIHKOTA
+
 
 def aturMenu(buttons,col):
 	menu = []
@@ -179,8 +207,11 @@ def aturMenu(buttons,col):
 def detailInfo(update: Update, context: CallbackContext):
 	#print(update)
 	kota = update.callback_query.data
+
+	provinsi = abm.get_kota(kota)["Provinsi"]
+
 	text = "*Info dan list ambulanmu* di {}: \n{}".format(kota,getAmbulanMu(abm.listByKota(kota=kota)))
-	keyboard= [[InlineKeyboardButton("Kota Lain",callback_data=str(PILIHKOTA)),
+	keyboard= [[InlineKeyboardButton("Cari Lagi",callback_data=str(provinsi)),
 				InlineKeyboardButton("🏠 Kembali",callback_data=str(BACK))]
 				]
 	markup = InlineKeyboardMarkup(keyboard)
@@ -188,7 +219,7 @@ def detailInfo(update: Update, context: CallbackContext):
 	update.callback_query.edit_message_text(text,parse_mode=ParseMode.MARKDOWN,reply_markup = markup)
 	context.user_data[START_OVER] = True
 	
-	return INFO
+	return PILIH_KOTA 
 	
 def getAmbulanMu(data):
 	mydata = []
@@ -361,6 +392,13 @@ def main():
 				MessageHandler(Filters.location,location),
 				CommandHandler('cancel',cancel)
 			],
+            INFO_PROVINSI: [
+				CallbackQueryHandler(info_ambulanmu_by_provinsi, pattern='^' +str(INFO_PROVINSI) + '$'),
+				CallbackQueryHandler(start,pattern='^' +str(BACK) + '$'),
+            ],
+			PILIHKOTA: [
+				CallbackQueryHandler(info_ambulanmu),
+			],
 			INFO: [
 				CallbackQueryHandler(info_ambulanmu,pattern='^' +str(INFO) + '$'),
 				CallbackQueryHandler(tracking,pattern='^' +str(ANTAR_PASIEN) + '$'),
@@ -372,9 +410,12 @@ def main():
 				CallbackQueryHandler(ambulanmu,pattern='^' +str(AMBULANMU) + '$'),
 				CallbackQueryHandler(sheltermu,pattern='^' +str(SHELTERMU) + '$'),
 				CallbackQueryHandler(start,pattern='^' +str(BACK) + '$')
-			]
-			},
-		fallbacks = [],
+			],
+		},
+		fallbacks = [
+			# MessageHandler()
+		],
+		allow_reentry = True,
 	)
 	
 	dispatcher.add_handler(layanan_handler)
@@ -385,4 +426,3 @@ def main():
 
 if __name__ == '__main__':
 	main()
-				
